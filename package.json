@@ -1,0 +1,19 @@
+{
+  "name": "tibia-tracker",
+  "version": "1.0.0",
+  "description": "Dashboard de level tracking para PT no Rubinot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "scrape": "node scraper.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.0",
+    "puppeteer": "^23.0.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

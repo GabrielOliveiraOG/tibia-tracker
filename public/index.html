@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tibia Tracker - PT Dashboard</title>
+  <meta name="description" content="Dashboard de tracking de levels da PT no Rubinot">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Ambient particles -->
+  <div class="particles" id="particles"></div>
+  <div class="deco deco-sword-left"></div>
+  <div class="deco deco-sword-right"></div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="header-glow"></div>
+    <div class="header-border-bottom"></div>
+    <div class="header-content">
+      <div class="header-left">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="header-title">Tibia Tracker</h1>
+          <p class="header-subtitle">PT Level Dashboard — RubinOT</p>
+        </div>
+      </div>
+      <div class="header-center">
+      </div>
+      <div class="header-right">
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot"></span>
+          <span class="status-text" id="statusText">Online</span>
+        </div>
+        <span class="last-update" id="lastUpdate">Última coleta: --</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- PT Filter Bar -->
+  <div class="filter-bar">
+    <div class="filter-bar-content">
+      <div class="filter-left">
+        <svg class="filter-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/>
+        </svg>
+        <span class="filter-label">Filtrar por PT:</span>
+        <div class="pt-filter-pills" id="ptFilterPills">
+          <button class="pt-pill active" data-pt="all" id="filterAll">Todos</button>
+          <!-- PT pills generated via JS -->
+        </div>
+      </div>
+      <div class="filter-right">
+        <button class="btn btn-accent btn-sm admin-hidden" id="scrapeBtn" style="display:none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23,4 23,10 17,10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Coletar Agora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- Summary cards -->
+    <section class="summary-cards" id="summaryCards">
+      <div class="loading-placeholder">
+        <div class="loading-spinner"></div>
+        <span>Carregando dados...</span>
+      </div>
+    </section>
+
+    <!-- Ranking Section -->
+    <section class="ranking-section panel" id="rankingSection">
+      <div class="section-header ranking-header">
+        <div class="section-title-group">
+          <svg class="section-icon gold-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+          </svg>
+          <div>
+            <h2 class="section-title">Ranking de Evolução</h2>
+            <span class="section-subtitle">Classificação por experiência e evolução de level</span>
+          </div>
+        </div>
+        
+        <div class="ranking-controls">
+          <!-- Sort mode -->
+          <div class="control-group">
+            <span class="control-label">Ordenar por:</span>
+            <div class="toggle-buttons">
+              <button class="ranking-sort-btn active" data-sort="xp" id="sortXpBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                XP Ganhada
+              </button>
+              <button class="ranking-sort-btn" data-sort="level" id="sortLevelBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                Levels Upados
+              </button>
+            </div>
+          </div>
+
+          <!-- Time range -->
+          <div class="control-group">
+            <span class="control-label">Período:</span>
+            <div class="toggle-buttons">
+              <button class="ranking-range-btn active" data-range="today">Hoje</button>
+              <button class="ranking-range-btn" data-range="week">7 dias</button>
+              <button class="ranking-range-btn" data-range="month">30 dias</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ranking-content" id="rankingContent">
+        <div class="loading-placeholder">
+          <div class="loading-spinner"></div>
+          <span>Calculando ranking de XP...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Two column layout for Log and PT Manager -->
+    <div class="grid-2col">
+      <!-- Log -->
+      <section class="log-section panel">
+        <div class="section-header">
+          <div class="section-title-group">
+            <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12,6 12,12 16,14"/>
+            </svg>
+            <h2 class="section-title">Log de Coletas</h2>
+          </div>
+        </div>
+        <div class="log-container" id="logContainer">
+          <div class="empty-state">Nenhum registro ainda</div>
+        </div>
+      </section>
+
+      <!-- PT Manager -->
+      <section class="manage-section panel">
+        <div class="section-header">
+          <div class="section-title-group">
+            <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <h2 class="section-title">Gerenciar PTs</h2>
+          </div>
+        </div>
+        <div class="manage-content">
+          <!-- Create PT -->
+          <div class="manage-group">
+            <label class="manage-label">Criar PT</label>
+            <div class="inline-form">
+              <input type="text" id="ptNameInput" class="char-input" placeholder="Nome da PT..." autocomplete="off">
+              <button class="btn btn-primary" id="createPtBtn">Criar</button>
+            </div>
+          </div>
+
+          <!-- PT List with member management -->
+          <div class="pt-manager-list" id="ptManagerList">
+            <!-- Generated via JS -->
+          </div>
+
+          <!-- Add character (global) -->
+          <div class="manage-group" style="margin-top:8px; padding-top:12px; border-top: 1px solid rgba(184,134,11,0.1);">
+            <label class="manage-label">Adicionar Personagem (global)</label>
+            <div class="inline-form">
+              <input type="text" id="charNameInput" class="char-input" placeholder="Nome do personagem..." autocomplete="off">
+              <button class="btn btn-primary" id="addCharBtn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add
+              </button>
+            </div>
+            <div class="char-list" id="charList"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- History table -->
+    <section class="history-section panel">
+      <div class="section-header">
+        <div class="section-title-group">
+          <svg class="section-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="21" x2="9" y2="9"/>
+          </svg>
+          <h2 class="section-title">Histórico de Levels</h2>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="history-table" id="historyTable">
+          <thead>
+            <tr>
+              <th>Personagem</th>
+              <th>Vocation</th>
+              <th>Level Atual</th>
+              <th>Hoje</th>
+              <th>Semana</th>
+              <th>Mês</th>
+              <th>Mortes (Mês)</th>
+              <th>Última Coleta</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="7" class="empty-state">Nenhum dado coletado ainda</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Character Detail Modal -->
+  <div class="char-modal-overlay" id="charModalOverlay" onclick="closeCharModal()">
+    <div class="char-modal" onclick="event.stopPropagation()">
+      <button class="char-modal-close" onclick="closeCharModal()" title="Fechar">&times;</button>
+
+      <!-- Modal Header -->
+      <div class="char-modal-header" id="charModalHeader"></div>
+
+      <!-- Quick Stats -->
+      <div class="char-modal-stats" id="charModalStats"></div>
+
+      <!-- Charts Row -->
+      <div class="char-modal-charts">
+        <div class="char-modal-chart-panel">
+          <div class="char-modal-chart-header">
+            <h3 class="char-modal-chart-title">📈 Evolução de Level</h3>
+            <div class="char-modal-chart-range" id="levelChartRange">
+              <button class="chart-range-btn active" data-range="week" onclick="setModalChartRange('week')">Semana</button>
+              <button class="chart-range-btn" data-range="month" onclick="setModalChartRange('month')">Mês</button>
+              <button class="chart-range-btn" data-range="all" onclick="setModalChartRange('all')">Tudo</button>
+            </div>
+          </div>
+          <div class="char-modal-chart-container">
+            <canvas id="charLevelChart"></canvas>
+          </div>
+        </div>
+        <div class="char-modal-chart-panel">
+          <div class="char-modal-chart-header">
+            <h3 class="char-modal-chart-title">📊 XP Ganha por Dia</h3>
+          </div>
+          <div class="char-modal-chart-container">
+            <canvas id="charXPBarChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deaths & Recent Records -->
+      <div class="char-modal-bottom-row">
+        <div class="char-modal-deaths-panel">
+          <h3 class="char-modal-section-title">💀 Histórico de Mortes</h3>
+          <div class="char-modal-deaths-list" id="charModalDeaths"></div>
+        </div>
+        <div class="char-modal-records-panel">
+          <h3 class="char-modal-section-title">📋 Últimas Coletas</h3>
+          <div class="char-modal-records-list" id="charModalRecords"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p class="footer-text">Tibia Tracker — RubinOT PT Dashboard</p>
+  </footer>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
