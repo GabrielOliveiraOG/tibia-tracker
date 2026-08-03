@@ -1,0 +1,30 @@
+name: Tibia Tracker Scraper
+
+on:
+  schedule:
+    # Runs twice a day: 06:00 UTC (03:00 BRT) and 18:00 UTC (15:00 BRT)
+    - cron: '0 6,18 * * *'
+  workflow_dispatch: # Enables manual run button in GitHub Actions tab
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Tibia Scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scraper.js
