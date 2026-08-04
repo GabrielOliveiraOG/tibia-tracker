@@ -5,6 +5,13 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 
+let realBrowserConnect = null;
+try {
+  realBrowserConnect = require('puppeteer-real-browser').connect;
+} catch {
+  realBrowserConnect = null;
+}
+
 puppeteer.use(StealthPlugin());
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -54,28 +61,38 @@ async function scrapeCharacter(page, charName) {
   const url = `https://rubinot.com.br/characters?name=${encodeURIComponent(charName)}`;
   console.log(`[SCRAPER] Acessando: ${url}`);
 
-  let attempts = 0;
-  let charData = null;
+  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-  while (attempts < 2) {
-    attempts++;
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+  try {
+    await page.waitForFunction(() => {
+      const body = document.body.innerText;
+      return body.includes('Level') || body.includes('level') || body.includes('blocked');
+    }, { timeout: 30000 });
+  } catch (e) {
+    console.log(`[SCRAPER] Timeout esperando dados de ${charName}...`);
+  }
 
-    // Wait for content render
-    try {
-      await page.waitForFunction(() => {
-        const body = document.body.innerText;
-        return body.includes('Level') || body.includes('level') || body.includes('blocked');
-      }, { timeout: 30000 });
-    } catch (e) {
-      console.log(`[SCRAPER] Timeout esperando dados de ${charName}...`);
+  await new Promise(r => setTimeout(r, 3000));
+
+  const charData = await page.evaluate(() => {
+    const body = document.body.innerText;
+
+    const result = {
+      name: null,
+      level: null,
+      vocation: null,
+      world: null,
+      deaths: [],
+      rawText: body.substring(0, 2000)
+    };
+
+    if (body.toLowerCase().includes('blocked') && body.toLowerCase().includes('cloudflare')) {
+      result.isBlocked = true;
+      return result;
     }
 
-    await new Promise(r => setTimeout(r, 3000));
+    const lines = body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-    // Extract page text
-    charData = await page.evaluate(() => {
-      const body = document.body.innerText;
     let inCharInfo = false;
     let passedCharInfo = false;
     let inDeaths = false;
@@ -84,14 +101,12 @@ async function scrapeCharacter(page, charName) {
       const line = lines[i];
       const lowerLine = line.toLowerCase();
 
-      // Detect character info section
       if (lowerLine.includes('informa') && lowerLine.includes('personagem') && !lowerLine.includes('conta')) {
         inCharInfo = true;
         inDeaths = false;
         continue;
       }
 
-      // Detect deaths section
       if (lowerLine.includes('mortes do personagem')) {
         inCharInfo = false;
         passedCharInfo = true;
@@ -99,13 +114,11 @@ async function scrapeCharacter(page, charName) {
         continue;
       }
 
-      // Detect end of deaths section
       if (inDeaths && lowerLine.includes('informa') && lowerLine.includes('conta')) {
         inDeaths = false;
       }
 
       if (inDeaths) {
-        // Line format: "10 de jun. de 2026, 23:35  Morto no level 426 por Toxic Keiber..."
         const parts = line.split('\t');
         if (parts.length >= 2) {
           const dateStr = parts[0].trim();
@@ -119,7 +132,6 @@ async function scrapeCharacter(page, charName) {
       }
 
       if (inCharInfo || !passedCharInfo) {
-        // Parse tab-separated or colon-separated key-value pairs
         const kvMatch = line.match(/^(.+?)[:]\s*\t?\s*(.+)$/);
 
         const labelOnlyMatch = line.match(/^(nome|name|nível|nivel|level|vocação|vocacao|vocation|mundo|world)[:]\s*$/i);
@@ -148,7 +160,6 @@ async function scrapeCharacter(page, charName) {
       }
     }
 
-    // Fallback: if we didn't find the section, try a broader search
     if (!result.level) {
       for (const line of lines) {
         const levelMatch = line.match(/n[ií]vel[:.\s\t]+(\d+)/i);
@@ -164,7 +175,6 @@ async function scrapeCharacter(page, charName) {
       }
     }
 
-    // Fallback for vocation
     if (!result.vocation) {
       const vocations = [
         'Elite Knight', 'Royal Paladin', 'Elder Druid', 'Master Sorcerer',
@@ -198,7 +208,33 @@ async function runScraper() {
   console.log(`[SCRAPER] Personagens: ${config.characters.join(', ')}`);
 
   let browser;
+  let page;
+
   try {
+    if (realBrowserConnect) {
+      console.log('[SCRAPER] Conectando via Real Browser (Cloudflare Bypass)...');
+      const connection = await realBrowserConnect({
+        headless: 'new',
+        turnstile: true,
+        tf: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--window-size=1920,1080'
+        ],
+        connectOption: { defaultViewport: { width: 1920, height: 1080 } }
+      });
+      browser = connection.browser;
+      page = connection.page;
+    }
+  } catch (err) {
+    console.log('[SCRAPER] Real Browser fallback:', err.message);
+    browser = null;
+  }
+
+  if (!browser) {
     browser = await puppeteer.launch({
       headless: 'new',
       args: [
@@ -211,9 +247,10 @@ async function runScraper() {
       ],
       defaultViewport: { width: 1920, height: 1080 }
     });
+    page = await browser.newPage();
+  }
 
-    const page = await browser.newPage();
-
+  try {
     // Override navigator.webdriver flag
     await page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false });
