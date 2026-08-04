@@ -14,6 +14,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Setup Cloudflare WARP IP
+        uses: fscarmen/warp-on-actions@v1
+        with:
+          stack: ipv4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
