@@ -1,5 +1,5 @@
 """
-Tibia Tracker - Python Scraper (Cloudflare TLS Impersonation)
+Tibia Tracker - Python Scraper (Cloudflare TLS Impersonation + ScraperAPI Support)
 Evades Cloudflare WAF 100% reliably on GitHub Actions & cloud servers.
 """
 
@@ -11,11 +11,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import requests as std_requests
 from curl_cffi import requests
 from supabase import create_client, Client
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+SCRAPER_KEY = os.environ.get("SCRAPERAPI_KEY")
 
 def get_supabase() -> Client | None:
     if SUPABASE_URL and SUPABASE_KEY:
@@ -31,7 +33,6 @@ def main():
         print("[PYTHON SCRAPER] Error: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.")
         sys.exit(1)
 
-    # 1. Fetch character list from Supabase
     try:
         chars_res = supabase.table("characters").select("key, name").execute()
         char_list = chars_res.data or []
@@ -47,39 +48,38 @@ def main():
 
     session = requests.Session(impersonate="chrome120")
 
-    # Warmup session on home page to establish HTTP/2 connection & TLS state
-    print("[PYTHON SCRAPER] Inicializando sessão HTTP/2 no Rubinot...")
-    try:
-        session.get("https://rubinot.com.br", headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}, timeout=15)
-    except Exception as e:
-        print(f"[PYTHON SCRAPER] Warmup warning: {e}")
+    if not SCRAPER_KEY:
+        print("[PYTHON SCRAPER] Inicializando sessão HTTP/2 no Rubinot...")
+        try:
+            session.get("https://rubinot.com.br", headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}, timeout=15)
+        except Exception as e:
+            print(f"[PYTHON SCRAPER] Warmup warning: {e}")
+    else:
+        print("[PYTHON SCRAPER] Usando ScraperAPI (Proxy Residencial)...")
 
     success_count = 0
-
-    SCRAPER_KEY = os.environ.get("SCRAPERAPI_KEY")
 
     for char_item in char_list:
         char_key = char_item.get("key")
         char_name = char_item.get("name") or char_key
-
         target_url = f"https://rubinot.com.br/api/characters/search?name={quote(char_name)}"
 
-        if SCRAPER_KEY:
-            url = f"https://api.scraperapi.com?api_key={SCRAPER_KEY}&url={quote(target_url)}"
-            headers = {}
-        else:
-            url = target_url
-            headers = {
-                "Referer": f"https://rubinot.com.br/characters?name={quote(char_name)}",
-                "Accept": "application/json, text/plain, */*",
-                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-origin"
-            }
-
         try:
-            res = session.get(url, headers=headers, timeout=25)
+            if SCRAPER_KEY:
+                url = f"https://api.scraperapi.com?api_key={SCRAPER_KEY}&url={quote(target_url)}&keep_headers=true"
+                headers = {"Referer": f"https://rubinot.com.br/characters?name={quote(char_name)}"}
+                res = std_requests.get(url, headers=headers, timeout=40)
+            else:
+                headers = {
+                    "Referer": f"https://rubinot.com.br/characters?name={quote(char_name)}",
+                    "Accept": "application/json, text/plain, */*",
+                    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                    "Sec-Fetch-Dest": "empty",
+                    "Sec-Fetch-Mode": "cors",
+                    "Sec-Fetch-Site": "same-origin"
+                }
+                res = session.get(target_url, headers=headers, timeout=25)
+
             if res.status_code == 200:
                 data = res.json()
                 player = data.get("player") or {}
@@ -91,7 +91,6 @@ def main():
                 display_name = player.get("name") or char_name
 
                 if level:
-                    # Update character info
                     supabase.table("characters").upsert({
                         "key": char_key,
                         "name": display_name,
@@ -99,14 +98,12 @@ def main():
                         "world": world
                     }, on_conflict="key").execute()
 
-                    # Insert level record
                     supabase.table("records").insert({
                         "character_key": char_key,
                         "timestamp": timestamp,
                         "level": int(level)
                     }).execute()
 
-                    # Insert deaths
                     for d in deaths:
                         date_str = str(d.get("date") or d.get("time") or "")
                         death_level = d.get("level")
