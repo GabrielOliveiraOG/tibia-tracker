@@ -54,42 +54,28 @@ async function scrapeCharacter(page, charName) {
   const url = `https://rubinot.com.br/characters?name=${encodeURIComponent(charName)}`;
   console.log(`[SCRAPER] Acessando: ${url}`);
 
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+  let attempts = 0;
+  let charData = null;
 
-  // Aguarda o conteúdo renderizar (Next.js CSR)
-  // Tenta encontrar o container de dados do personagem
-  try {
-    await page.waitForFunction(() => {
-      // Look for any text content that contains "Level" on the page
+  while (attempts < 2) {
+    attempts++;
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+    // Wait for content render
+    try {
+      await page.waitForFunction(() => {
+        const body = document.body.innerText;
+        return body.includes('Level') || body.includes('level') || body.includes('blocked');
+      }, { timeout: 30000 });
+    } catch (e) {
+      console.log(`[SCRAPER] Timeout esperando dados de ${charName}...`);
+    }
+
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Extract page text
+    charData = await page.evaluate(() => {
       const body = document.body.innerText;
-      return body.includes('Level') || body.includes('level');
-    }, { timeout: 30000 });
-  } catch (e) {
-    console.log(`[SCRAPER] Timeout esperando dados de ${charName}. Tentando extrair mesmo assim...`);
-  }
-
-  // Espera um pouco mais para garantir renderização completa
-  await new Promise(r => setTimeout(r, 3000));
-
-  // Extrai dados do personagem
-  const charData = await page.evaluate(() => {
-    const body = document.body.innerText;
-
-    const result = {
-      name: null,
-      level: null,
-      vocation: null,
-      world: null,
-      deaths: [],
-      rawText: body.substring(0, 2000) // For debugging
-    };
-
-    // The Rubinot page uses Portuguese labels with tab-separated values:
-    // We need to find the CHARACTER INFO section specifically to avoid
-    // picking up level numbers from the deaths section.
-
-    const lines = body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
     let inCharInfo = false;
     let passedCharInfo = false;
     let inDeaths = false;
@@ -220,6 +206,7 @@ async function runScraper() {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--disable-blink-features=AutomationControlled',
         '--window-size=1920,1080'
       ],
       defaultViewport: { width: 1920, height: 1080 }
@@ -227,13 +214,31 @@ async function runScraper() {
 
     const page = await browser.newPage();
 
-    // Set user agent
+    // Override navigator.webdriver flag
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
+
+    // Set Chrome user agent & Sec-CH-UA headers
     await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     );
 
-    // Set language
-    await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' });
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+      'Sec-Ch-Ua-Mobile': '?0',
+      'Sec-Ch-Ua-Platform': '"Linux"'
+    });
+
+    // Warm-up: navigate to home page first to establish Cloudflare cookies & session
+    console.log('[SCRAPER] Inicializando sessão no Rubinot...');
+    try {
+      await page.goto('https://rubinot.com.br/', { waitUntil: 'networkidle2', timeout: 30000 });
+      await new Promise(r => setTimeout(r, 4000));
+    } catch (e) {
+      console.log('[SCRAPER] Warmup homepage continue...');
+    }
 
     for (const charName of config.characters) {
       try {
