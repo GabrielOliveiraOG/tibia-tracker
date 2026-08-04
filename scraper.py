@@ -56,22 +56,30 @@ def main():
 
     success_count = 0
 
+    SCRAPER_KEY = os.environ.get("SCRAPERAPI_KEY")
+
     for char_item in char_list:
         char_key = char_item.get("key")
         char_name = char_item.get("name") or char_key
 
-        url = f"https://rubinot.com.br/api/characters/search?name={quote(char_name)}"
-        headers = {
-            "Referer": f"https://rubinot.com.br/characters?name={quote(char_name)}",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin"
-        }
+        target_url = f"https://rubinot.com.br/api/characters/search?name={quote(char_name)}"
+
+        if SCRAPER_KEY:
+            url = f"http://api.scraperapi.com?api_key={SCRAPER_KEY}&url={quote(target_url)}"
+            headers = {}
+        else:
+            url = target_url
+            headers = {
+                "Referer": f"https://rubinot.com.br/characters?name={quote(char_name)}",
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin"
+            }
 
         try:
-            res = session.get(url, headers=headers, timeout=20)
+            res = session.get(url, headers=headers, timeout=25)
             if res.status_code == 200:
                 data = res.json()
                 player = data.get("player") or {}
