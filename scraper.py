@@ -17,7 +17,12 @@ from supabase import create_client, Client
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-SCRAPER_KEY = os.environ.get("SCRAPERAPI_KEY")
+SCRAPER_KEY = (
+    os.environ.get("SCRAPERAPI_KEY") or
+    os.environ.get("SCRAPER_API_KEY") or
+    os.environ.get("SCRAPER_KEY") or
+    os.environ.get("SCRAPERAPIKEY")
+)
 
 def get_supabase() -> Client | None:
     if SUPABASE_URL and SUPABASE_KEY:
@@ -46,6 +51,11 @@ def main():
 
     print(f"[PYTHON SCRAPER] Target characters ({len(char_list)}): {[c.get('name') or c.get('key') for c in char_list]}")
 
+    if SCRAPER_KEY:
+        print(f"[PYTHON SCRAPER] ⚡ Modo ScraperAPI ATIVADO! (Chave detectada: {SCRAPER_KEY[:6]}...)")
+    else:
+        print("[PYTHON SCRAPER] ⚠️ Modo ScraperAPI DESATIVADO (Chave não encontrada nas variáveis de ambiente)")
+
     session = requests.Session(impersonate="chrome120")
 
     if not SCRAPER_KEY:
@@ -54,8 +64,6 @@ def main():
             session.get("https://rubinot.com.br", headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}, timeout=15)
         except Exception as e:
             print(f"[PYTHON SCRAPER] Warmup warning: {e}")
-    else:
-        print("[PYTHON SCRAPER] Usando ScraperAPI (Proxy Residencial)...")
 
     success_count = 0
 
