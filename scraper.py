@@ -65,7 +65,7 @@ def main():
         target_url = f"https://rubinot.com.br/api/characters/search?name={quote(char_name)}"
 
         if SCRAPER_KEY:
-            url = f"http://api.scraperapi.com?api_key={SCRAPER_KEY}&url={quote(target_url)}"
+            url = f"https://api.scraperapi.com?api_key={SCRAPER_KEY}&url={quote(target_url)}"
             headers = {}
         else:
             url = target_url
