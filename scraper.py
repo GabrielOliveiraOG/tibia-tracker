@@ -45,6 +45,15 @@ def main():
 
     print(f"[PYTHON SCRAPER] Target characters ({len(char_list)}): {[c.get('name') or c.get('key') for c in char_list]}")
 
+    session = requests.Session(impersonate="chrome120")
+
+    # Warmup session on home page to establish HTTP/2 connection & TLS state
+    print("[PYTHON SCRAPER] Inicializando sessão HTTP/2 no Rubinot...")
+    try:
+        session.get("https://rubinot.com.br", headers={"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"}, timeout=15)
+    except Exception as e:
+        print(f"[PYTHON SCRAPER] Warmup warning: {e}")
+
     success_count = 0
 
     for char_item in char_list:
@@ -62,7 +71,7 @@ def main():
         }
 
         try:
-            res = requests.get(url, impersonate="chrome120", headers=headers, timeout=20)
+            res = session.get(url, headers=headers, timeout=20)
             if res.status_code == 200:
                 data = res.json()
                 player = data.get("player") or {}
