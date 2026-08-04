@@ -200,19 +200,9 @@ async function scrapeCharacter(page, charName) {
 }
 
 async function getWorkingProxy() {
-  if (process.env.PROXY_SERVER) return process.env.PROXY_SERVER;
-  try {
-    console.log('[SCRAPER] Buscando proxy para contornar bloqueio de IP da nuvem...');
-    const res = await fetch('https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=2500&country=all&ssl=all');
-    const text = await res.text();
-    const list = text.split('\n').map(p => p.trim()).filter(p => p.length > 0);
-    if (list.length > 0) {
-      const selected = list[Math.floor(Math.random() * Math.min(10, list.length))];
-      console.log(`[SCRAPER] Usando proxy público: ${selected}`);
-      return `http://${selected}`;
-    }
-  } catch (e) {
-    console.log('[SCRAPER] Proxy fetch aviso:', e.message);
+  if (process.env.PROXY_SERVER) {
+    console.log(`[SCRAPER] Usando proxy configurado: ${process.env.PROXY_SERVER}`);
+    return process.env.PROXY_SERVER;
   }
   return null;
 }
