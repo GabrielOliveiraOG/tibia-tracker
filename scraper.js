@@ -240,19 +240,36 @@ async function runScraper() {
     puppeteerArgs.push(`--proxy-server=${activeProxy}`);
   }
 
+  // Look for official Chrome executable on Linux CI
+  let executablePath = null;
+  if (fs.existsSync('/usr/bin/google-chrome')) {
+    executablePath = '/usr/bin/google-chrome';
+    console.log('[SCRAPER] Usando Google Chrome oficial: /usr/bin/google-chrome');
+  } else if (fs.existsSync('/usr/bin/google-chrome-stable')) {
+    executablePath = '/usr/bin/google-chrome-stable';
+    console.log('[SCRAPER] Usando Google Chrome Stable');
+  }
+
+  const isCI = process.env.GITHUB_ACTIONS === 'true';
+  // Under Xvfb virtual display in CI, run headful (false) to avoid headless Chrome signature
+  const headlessMode = isCI ? false : 'new';
+
   let browser;
   let page;
 
   try {
     if (realBrowserConnect) {
       console.log('[SCRAPER] Conectando via Real Browser (Cloudflare Bypass)...');
-      const connection = await realBrowserConnect({
-        headless: 'new',
+      const connOpts = {
+        headless: headlessMode,
         turnstile: true,
         tf: true,
         args: puppeteerArgs,
         connectOption: { defaultViewport: { width: 1920, height: 1080 } }
-      });
+      };
+      if (executablePath) connOpts.executablePath = executablePath;
+
+      const connection = await realBrowserConnect(connOpts);
       browser = connection.browser;
       page = connection.page;
     }
@@ -262,11 +279,14 @@ async function runScraper() {
   }
 
   if (!browser) {
-    browser = await puppeteer.launch({
-      headless: 'new',
+    const launchOpts = {
+      headless: headlessMode,
       args: puppeteerArgs,
       defaultViewport: { width: 1920, height: 1080 }
-    });
+    };
+    if (executablePath) launchOpts.executablePath = executablePath;
+
+    browser = await puppeteer.launch(launchOpts);
     page = await browser.newPage();
   }
 
