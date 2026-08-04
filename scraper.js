@@ -17,8 +17,23 @@ const supabase = (SUPABASE_URL && SUPABASE_SERVICE_KEY)
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const DATA_PATH = path.join(__dirname, 'data', 'levels.json');
 
-function loadConfig() {
-  return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+async function loadConfig() {
+  if (supabase) {
+    try {
+      const { data: chars } = await supabase.from('characters').select('name, key');
+      if (chars && chars.length > 0) {
+        return { characters: chars.map(c => c.name || c.key) };
+      }
+    } catch (e) {
+      console.log('[SCRAPER] Aviso: Erro ao buscar lista de chars no Supabase, usando local...');
+    }
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+  } catch {
+    return { characters: [] };
+  }
 }
 
 function loadData() {
@@ -189,7 +204,7 @@ async function scrapeCharacter(page, charName) {
 }
 
 async function runScraper() {
-  const config = loadConfig();
+  const config = await loadConfig();
   const data = loadData();
   const timestamp = new Date().toISOString();
 
